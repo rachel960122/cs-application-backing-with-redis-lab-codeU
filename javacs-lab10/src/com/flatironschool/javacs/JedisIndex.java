@@ -68,7 +68,8 @@ public class JedisIndex {
 	 */
 	public Set<String> getURLs(String term) {
         // FILL THIS IN!
-		return null;
+        Set<String> urlSet = jedis.smembers(urlSetKey(term));
+		return urlSet;
 	}
 
     /**
@@ -79,7 +80,12 @@ public class JedisIndex {
 	 */
 	public Map<String, Integer> getCounts(String term) {
         // FILL THIS IN!
-		return null;
+        Map<String, Integer> counts = new HashMap<String, Integer>();
+        Set<String> urlSet = getURLs(term);
+        for (String url : urlSet) {
+        	counts.put(url, getCount(url, term));
+        }
+		return counts;
 	}
 
     /**
@@ -91,7 +97,8 @@ public class JedisIndex {
 	 */
 	public Integer getCount(String url, String term) {
         // FILL THIS IN!
-		return null;
+        String urlKey = termCounterKey(url);
+		return new Integer(jedis.hget(urlKey, term));
 	}
 
 
@@ -103,6 +110,18 @@ public class JedisIndex {
 	 */
 	public void indexPage(String url, Elements paragraphs) {
         // FILL THIS IN!
+        TermCounter counter = new TermCounter(url.toString());
+        counter.processElements(paragraphs);
+        Transaction t = jedis.multi();
+        String urlKey = termCounterKey(url);
+        t.del(urlKey);
+        Set<String> terms = counter.keySet();
+        for (String term : terms) {
+        	t.sadd(urlSetKey(term), url);
+        	Integer count = counter.get(term);
+        	t.hset(urlKey, term, count.toString());
+        }
+        t.exec();
 	}
 
 	/**
